@@ -29,3 +29,6 @@ uv.lock
 # OS
 .DS_Store
 Thumbs.db
+
+# Judging (not visible to participants)
+judging/
