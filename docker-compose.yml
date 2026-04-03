@@ -1,0 +1,43 @@
+services:
+  api:
+    container_name: api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uv run flask --app run:app run --host=0.0.0.0 --port=5000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      FLASK_DEBUG: "true"
+      DATABASE_NAME: hackathon_db
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+
+  postgres:
+    container_name: postgres
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hackathon_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hackathon_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
