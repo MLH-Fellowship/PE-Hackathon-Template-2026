@@ -2,35 +2,23 @@ name: Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, vm-cd ]
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      VM_APP_DIR: ${{ secrets.VM_APP_DIR }}
+      VM_APP_DIR: ${{ vars.VM_APP_DIR }}
 
     steps:
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Verify SSH connectivity
-        run: |
-          ssh -o BatchMode=yes ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "echo connected"
-
-      - name: Deploy
-        run: |
+      uses: appleboy/ssh-action@v1
+      with:
+        host: ${{ secrets.VM_HOST }}
+        username: ${{ secrets.VM_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
           set -euo pipefail
-
-          if [ -z "${VM_APP_DIR:-}" ]; then
-            echo "Missing required secret: VM_APP_DIR"
-            exit 1
-          fi
 
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} bash -s -- "${VM_APP_DIR}" << 'EOF'
             set -euo pipefail
