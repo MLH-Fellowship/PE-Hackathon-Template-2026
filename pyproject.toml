@@ -9,6 +9,14 @@ dependencies = [
     "psycopg2-binary>=2.9",
     "pytest>=9.0.2",
     "python-dotenv>=1.0",
+    "requests>=2.33.1",
+    "streamlit>=1.56.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-cov>=7.1.0",
 ]
 
 [tool.pytest.ini_options]

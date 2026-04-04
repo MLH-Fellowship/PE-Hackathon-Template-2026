@@ -8,31 +8,71 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_DB: hackathon_db
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     env:
       FLASK_DEBUG: "false"
-      DATABASE_NAME: hackathon_db
-      DATABASE_HOST: localhost
+      DATABASE_NAME: postgres
+      DATABASE_HOST: ${{ secrets.SUPABASE_HOST }}
       DATABASE_PORT: "5432"
-      DATABASE_USER: postgres
-      DATABASE_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      DATABASE_USER: ${{ secrets.SUPABASE_USER }}
+      DATABASE_PASSWORD: ${{ secrets.SUPABASE_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
-      - run: uv sync
-      - run: uv run pytest tests/ -v
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Verify Database Connection
+        run: |
+          echo "=========================================="
+          echo "DATABASE CONNECTION CHECK"
+          echo "=========================================="
+          uv run python -c "
+          from dotenv import load_dotenv
+          load_dotenv()
+          from app.database import db, init_db
+          from flask import Flask
+
+          app = Flask(__name__)
+          init_db(app)
+          db.connect()
+          print('[OK] Connected to Supabase')
+
+          # Verify test schema exists
+          cursor = db.execute_sql(\"SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'test';\")
+          if cursor.fetchone():
+              print('[OK] Test schema exists')
+          else:
+              print('[FAIL] Test schema not found!')
+              exit(1)
+          db.close()
+          "
+
+      - name: Run Application Tests (tests/)
+        run: |
+          echo "=========================================="
+          echo "APPLICATION TESTS"
+          echo "=========================================="
+          uv run pytest tests/ -v
+
+      - name: Run Database Function Tests (Test_Functions/)
+        run: |
+          echo "=========================================="
+          echo "DATABASE FUNCTION TESTS"
+          echo "=========================================="
+          echo "Testing against Supabase test schema"
+          echo "Schema check runs automatically"
+          echo "=========================================="
+          uv run pytest Test_Functions/ -v -s
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "TEST SUMMARY"
+          echo "=========================================="
+          echo "Database: Supabase (test schema)"
+          echo "Application tests: tests/"
+          echo "Database function tests: Test_Functions/"
+          echo "=========================================="
