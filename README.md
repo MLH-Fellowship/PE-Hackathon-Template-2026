@@ -56,6 +56,51 @@ curl http://localhost:5000/health
 # → {"status":"ok"}
 ```
 
+## Docker Quick Start
+
+```bash
+# 1. Start postgres
+docker compose up -d db
+
+# 2. Run migrations
+uv run scripts/migrate.py up
+
+# 3. Start the API
+docker compose up web
+```
+
+## Migrations (peewee-migrate)
+
+```bash
+# Apply all pending migrations
+uv run scripts/migrate.py up
+
+# Roll back the latest migration
+uv run scripts/migrate.py down
+
+# Create a new empty migration file
+uv run scripts/migrate.py create add_some_change
+```
+
+## URL Shortener Endpoints
+
+```bash
+# Create a short URL
+curl -X POST http://localhost:5000/shorten \
+    -H "Content-Type: application/json" \
+    -d '{"url":"https://example.com/some/long/path"}'
+
+# Response
+# {
+#   "original_url": "https://example.com/some/long/path",
+#   "short_code": "a1B2c3",
+#   "short_url": "http://localhost:5000/a1B2c3"
+# }
+
+# Redirect to original URL
+curl -i http://localhost:5000/a1B2c3
+```
+
 ## Project Structure
 
 ```

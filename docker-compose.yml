@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-hackathon_db}
+      POSTGRES_USER: ${DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - /var/lib/postgresql/data
+
+  web:
+    build: .
+    command: uv run run.py
+    environment:
+      FLASK_DEBUG: ${FLASK_DEBUG:-true}
+      DATABASE_NAME: ${DATABASE_NAME:-hackathon_db}
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_USER: ${DATABASE_USER:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5000}
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+
