@@ -1,192 +1,123 @@
-# MLH PE Hackathon — Flask + Peewee + PostgreSQL Template
+# URLPulse — Production-Grade URL Shortener
 
-A minimal hackathon starter template. You get the scaffolding and database wiring — you build the models, routes, and CSV loading logic.
+> **MLH Production Engineering Hackathon 2026**
 
-**Stack:** Flask · Peewee ORM · PostgreSQL · uv
+A production-grade URL shortener built to survive chaos. Shorten URLs, track events, and prove your system can handle load, recover from failures, and alert when things break.
 
-## **Important**
+## Tech Stack
 
-You need to work with around the seed files that you can find in [MLH PE Hackathon](https://mlh-pe-hackathon.com) platform. This will help you build the schema for the database and have some data to do some testing and submit your project for judging. If you need help with this, reach out on Discord or on the Q&A tab on the platform.
+| Layer | Technology | Why |
+|-------|-----------|-----|
+| **Language** | Python 3.13 | Template default, team familiarity |
+| **Framework** | Flask | Lightweight, hackathon-friendly |
+| **ORM** | Peewee | Simple, DatabaseProxy pattern for connection pooling |
+| **Database** | PostgreSQL 16 | Production-grade relational DB |
+| **Cache** | Redis 7 | In-memory caching with TTL & LRU eviction |
+| **WSGI Server** | Gunicorn | Multi-worker concurrent request handling |
+| **Load Balancer** | Nginx | Round-robin across 3 app instances |
+| **Containerization** | Docker + Docker Compose | Full stack orchestration |
+| **Metrics** | Prometheus | Scrapes /metrics, stores time-series data |
+| **Dashboards** | Grafana | Four Golden Signals visualization |
+| **Alerting** | Alertmanager → Discord | Automated incident notifications |
+| **CI/CD** | GitHub Actions | Test → Build → Deploy pipeline |
+| **Infrastructure** | GCP + Terraform | Reproducible cloud deployment |
+| **Load Testing** | k6 | Scriptable load tests (50/200/500 users) |
+| **Package Manager** | uv | Fast Python dependency management |
 
-## Prerequisites
+## Architecture
 
-- **uv** — a fast Python package manager that handles Python versions, virtual environments, and dependencies automatically.
-  Install it with:
-  ```bash
-  # macOS / Linux
-  curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+Internet
+   │
+   ▼
+┌─────────┐
+│  Nginx  │  :80  (round-robin load balancer)
+└────┬────┘
+     │
+     ├──────────────┬──────────────┐
+     ▼              ▼              ▼
+┌─────────┐  ┌─────────┐  ┌─────────┐
+│  App 1  │  │  App 2  │  │  App 3  │  Flask + Gunicorn
+└────┬────┘  └────┬────┘  └────┬────┘
+     │            │            │
+     ▼            ▼            ▼
+┌─────────┐  ┌─────────┐
+│ Postgres │  │  Redis  │
+│   :5432  │  │  :6379  │
+└──────────┘  └─────────┘
 
-  # Windows (PowerShell)
-  powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-  ```
-  For other methods see the [uv installation docs](https://docs.astral.sh/uv/getting-started/installation/).
-- PostgreSQL running locally (you can use Docker or a local instance)
+Observability:
+  Prometheus (:9090) → Grafana (:3000) → Alertmanager (:9093) → Discord
+```
 
-## uv Basics
+## Data Model
 
-`uv` manages your Python version, virtual environment, and dependencies automatically — no manual `python -m venv` needed.
+- **User** — username, email, created_at
+- **Url** — linked to a User, short_code (unique), original_url, title, is_active, timestamps
+- **Event** — linked to both Url and User, event_type (created/updated/deleted), details (JSON)
 
-| Command | What it does |
-|---------|--------------|
-| `uv sync` | Install all dependencies (creates `.venv` automatically) |
-| `uv run <script>` | Run a script using the project's virtual environment |
-| `uv add <package>` | Add a new dependency |
-| `uv remove <package>` | Remove a dependency |
+## API Endpoints
 
-## Quick Start
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Liveness check |
+| `POST` | `/users` | Create a user |
+| `GET` | `/users` | List all users |
+| `GET` | `/users/<id>` | Get user by ID |
+| `POST` | `/shorten` | Create a shortened URL |
+| `POST` | `/update` | Update a URL |
+| `POST` | `/delete` | Delete a URL |
+
+## Running Locally (No Docker)
 
 ```bash
-# 1. Clone the repo
-git clone <repo-url> && cd mlh-pe-hackathon
-
-# 2. Install dependencies
+# 1. Install dependencies
 uv sync
 
-# 3. Create the database
-createdb hackathon_db
+# 2. Configure environment — pick ONE option in .env
+cp .env.example .env
 
-# 4. Configure environment
-cp .env.example .env   # edit if your DB credentials differ
+# Option A: Supabase (recommended for teams — shared DB, no local setup)
+#   Fill in your Supabase credentials in .env
+#   Get them from: Supabase Dashboard → Connect → Connection string
 
-# 5. Run the server
+# Option B: Local PostgreSQL
+#   Uncomment the local block in .env and comment out the Supabase block
+#   Make sure PostgreSQL is running locally:
+#   brew install postgresql@16 && brew services start postgresql@16
+#   createdb hackathon_db
+
+# 3. Run the server
 uv run run.py
+# Server starts at http://localhost:5000
 
-# 6. Verify
+# 4. Verify it's working
 curl http://localhost:5000/health
 # → {"status":"ok"}
+```
+
+### Running Tests
+
+```bash
+uv run pytest --cov=app --cov-fail-under=70
 ```
 
 ## Project Structure
 
 ```
-mlh-pe-hackathon/
+urlpulse/
 ├── app/
-│   ├── __init__.py          # App factory (create_app)
-│   ├── database.py          # DatabaseProxy, BaseModel, connection hooks
+│   ├── __init__.py          # App factory
+│   ├── database.py          # DB connection + BaseModel
 │   ├── models/
-│   │   └── __init__.py      # Import your models here
+│   │   ├── user.py          # User model
+│   │   ├── url.py           # Url model
+│   │   └── event.py         # Event model
 │   └── routes/
-│       └── __init__.py      # register_routes() — add blueprints here
-├── .env.example             # DB connection template
-├── .gitignore               # Python + uv gitignore
-├── .python-version          # Pin Python version for uv
-├── pyproject.toml           # Project metadata + dependencies
-├── run.py                   # Entry point: uv run run.py
+│       ├── users.py         # User CRUD
+│       └── url_actions/     # URL shorten/update/delete
+├── .env.example
+├── pyproject.toml
+├── run.py
 └── README.md
 ```
-
-## How to Add a Model
-
-1. Create a file in `app/models/`, e.g. `app/models/product.py`:
-
-```python
-from peewee import CharField, DecimalField, IntegerField
-
-from app.database import BaseModel
-
-
-class Product(BaseModel):
-    name = CharField()
-    category = CharField()
-    price = DecimalField(decimal_places=2)
-    stock = IntegerField()
-```
-
-2. Import it in `app/models/__init__.py`:
-
-```python
-from app.models.product import Product
-```
-
-3. Create the table (run once in a Python shell or a setup script):
-
-```python
-from app.database import db
-from app.models.product import Product
-
-db.create_tables([Product])
-```
-
-## How to Add Routes
-
-1. Create a blueprint in `app/routes/`, e.g. `app/routes/products.py`:
-
-```python
-from flask import Blueprint, jsonify
-from playhouse.shortcuts import model_to_dict
-
-from app.models.product import Product
-
-products_bp = Blueprint("products", __name__)
-
-
-@products_bp.route("/products")
-def list_products():
-    products = Product.select()
-    return jsonify([model_to_dict(p) for p in products])
-```
-
-2. Register it in `app/routes/__init__.py`:
-
-```python
-def register_routes(app):
-    from app.routes.products import products_bp
-    app.register_blueprint(products_bp)
-```
-
-## How to Load CSV Data
-
-```python
-import csv
-from peewee import chunked
-from app.database import db
-from app.models.product import Product
-
-def load_csv(filepath):
-    with open(filepath, newline="") as f:
-        reader = csv.DictReader(f)
-        rows = list(reader)
-
-    with db.atomic():
-        for batch in chunked(rows, 100):
-            Product.insert_many(batch).execute()
-```
-
-## Useful Peewee Patterns
-
-```python
-from peewee import fn
-from playhouse.shortcuts import model_to_dict
-
-# Select all
-products = Product.select()
-
-# Filter
-cheap = Product.select().where(Product.price < 10)
-
-# Get by ID
-p = Product.get_by_id(1)
-
-# Create
-Product.create(name="Widget", category="Tools", price=9.99, stock=50)
-
-# Convert to dict (great for JSON responses)
-model_to_dict(p)
-
-# Aggregations
-avg_price = Product.select(fn.AVG(Product.price)).scalar()
-total = Product.select(fn.SUM(Product.stock)).scalar()
-
-# Group by
-from peewee import fn
-query = (Product
-         .select(Product.category, fn.COUNT(Product.id).alias("count"))
-         .group_by(Product.category))
-```
-
-## Tips
-
-- Use `model_to_dict` from `playhouse.shortcuts` to convert model instances to dictionaries for JSON responses.
-- Wrap bulk inserts in `db.atomic()` for transactional safety and performance.
-- The template uses `teardown_appcontext` for connection cleanup, so connections are closed even when requests fail.
-- Check `.env.example` for all available configuration options.
