@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from flask import Blueprint, jsonify, redirect, request
 from peewee import IntegrityError
 
+from app.cache import cache_get, cache_set
 from app.models.url import Url
 
 shortener_bp = Blueprint("shortener", __name__)
@@ -64,8 +65,14 @@ def shorten_url():
 
 @shortener_bp.get("/<short_code>")
 def resolve_short_url(short_code: str):
+    cache_key = f"short-url:{short_code}"
+    cached_url = cache_get(cache_key)
+    if cached_url:
+        return redirect(cached_url, code=302)
+
     url = Url.get_or_none((Url.short_code == short_code) & (Url.is_active == True))
     if url is None:
         return jsonify(error="Short URL not found"), 404
 
+    cache_set(cache_key, url.original_url, ttl_seconds=3600)
     return redirect(url.original_url, code=302)

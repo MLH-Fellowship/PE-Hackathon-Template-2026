@@ -59,15 +59,85 @@ curl http://localhost:5000/health
 ## Docker Quick Start
 
 ```bash
-# 1. Start postgres
-docker compose up -d db
+# 1. Build images
+docker compose build
 
-# 2. Run migrations
-uv run scripts/migrate.py up
+# 2. Start core infrastructure
+docker compose up -d db redis
 
-# 3. Start the API
-docker compose up web
+# 3. Run migrations once
+docker compose --profile setup run --rm migrate
+
+# 4. Start scaled app fleet + load balancer
+docker compose up -d web1 web2 web3 nginx
+
+# 5. Verify
+curl http://localhost/health
 ```
+
+## VM Deployment Script (Reusable Locally)
+
+The repository includes a reusable deployment script at [scripts/deploy-vm.sh](scripts/deploy-vm.sh).
+The GitHub workflow [.github/deploy.yml](.github/deploy.yml) calls this same script over SSH on your VM.
+
+Run it from the repo root:
+
+```bash
+chmod +x scripts/deploy-vm.sh
+./scripts/deploy-vm.sh
+```
+
+## Scalability Quest (k6 + Nginx + Redis)
+
+### Bronze (50 concurrent users)
+
+```bash
+k6 run load-tests/k6-quest.js \
+    -e BASE_URL=http://localhost \
+    -e VUS=50 \
+    -e DURATION=2m \
+    -e SHORTEN_RATIO=0.2
+```
+
+Record:
+- p95 latency from http_req_duration
+- error rate from http_req_failed
+
+### Silver (200 concurrent users, scale-out)
+
+```bash
+# Proof of scale-out
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+# Load test
+k6 run load-tests/k6-quest.js \
+    -e BASE_URL=http://localhost \
+    -e VUS=200 \
+    -e DURATION=3m \
+    -e SHORTEN_RATIO=0.2
+```
+
+Target:
+- p95 under 3 seconds
+
+### Gold (500 concurrent users + caching)
+
+```bash
+k6 run load-tests/k6-quest.js \
+    -e BASE_URL=http://localhost \
+    -e VUS=500 \
+    -e DURATION=4m \
+    -e SHORTEN_RATIO=0.15
+```
+
+Target:
+- error rate under 5%
+
+### Notes
+
+- Traffic goes through Nginx at port 80 and is distributed across web1, web2, and web3.
+- Redirect lookups are cached in Redis to cut repeated database reads.
+- Keep FLASK_DEBUG disabled for load testing and production-like runs.
 
 ## Migrations (peewee-migrate)
 

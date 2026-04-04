@@ -1,0 +1,42 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VM_APP_DIR: ${{ secrets.VM_APP_DIR }}
+
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Verify SSH connectivity
+        run: |
+          ssh -o BatchMode=yes ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "echo connected"
+
+      - name: Deploy
+        run: |
+          set -euo pipefail
+
+          if [ -z "${VM_APP_DIR:-}" ]; then
+            echo "Missing required secret: VM_APP_DIR"
+            exit 1
+          fi
+
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} bash -s -- "${VM_APP_DIR}" << 'EOF'
+            set -euo pipefail
+            APP_DIR="$1"
+
+            cd "${APP_DIR}"
+            chmod +x scripts/deploy-vm.sh
+            ./scripts/deploy-vm.sh
+          EOF
