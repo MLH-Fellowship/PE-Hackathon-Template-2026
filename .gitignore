@@ -32,3 +32,5 @@ Thumbs.db
 
 # Judging (not visible to participants)
 judging/
+
+.npm-cache/

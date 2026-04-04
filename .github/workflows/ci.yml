@@ -1,0 +1,126 @@
+# ==============================================================================
+# CI Pipeline — Runs on every pull request to staging and main
+# ==============================================================================
+# This workflow ensures code quality by running linting and tests before
+# any code can be merged. It uses uv for fast dependency management and
+# caches dependencies between runs to speed up builds.
+# ==============================================================================
+
+name: CI
+
+# ------------------------------------------------------------------------------
+# Trigger: Run on pull requests targeting staging or main branches.
+# This ensures every PR is validated before merge.
+# ------------------------------------------------------------------------------
+on:
+  pull_request:
+    branches: [main, staging]
+
+# ------------------------------------------------------------------------------
+# Cancel in-progress runs for the same PR to save resources.
+# If you push again while CI is running, the old run is cancelled.
+# ------------------------------------------------------------------------------
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# ------------------------------------------------------------------------------
+# Restrict permissions to the minimum needed (security best practice).
+# ------------------------------------------------------------------------------
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    # --------------------------------------------------------------------------
+    # Linting job: checks code style and common errors using Ruff.
+    # Runs independently from tests so you get fast feedback on style issues.
+    # --------------------------------------------------------------------------
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # Check out the repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Install uv — the fast Python package manager used by this project
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true  # Caches uv's dependency cache between runs
+
+      # Set up the Python version specified in .python-version
+      - name: Set up Python
+        run: uv python install
+
+      # Install all dependencies including dev tools (ruff, pytest)
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      # Run Ruff linter to check for code style and logical errors
+      - name: Run Ruff linter
+        run: uv run ruff check .
+
+      # Run Ruff formatter check (fails if code isn't formatted correctly)
+      - name: Check Ruff formatting
+        run: uv run ruff format --check .
+
+  test:
+    # --------------------------------------------------------------------------
+    # Test job: runs the pytest test suite.
+    # Uses a PostgreSQL service container so tests can hit a real database.
+    # --------------------------------------------------------------------------
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # --------------------------------------------------------------------------
+    # PostgreSQL service container — spins up a real DB for integration tests.
+    # The health check ensures the DB is ready before tests start.
+    # --------------------------------------------------------------------------
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: hackathon_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    # --------------------------------------------------------------------------
+    # Environment variables for the app to connect to the test database.
+    # These match the PostgreSQL service container configuration above.
+    # --------------------------------------------------------------------------
+    env:
+      DATABASE_NAME: hackathon_db
+      DATABASE_HOST: localhost
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      # Run pytest with verbose output so failures are easy to diagnose in logs
+      - name: Run tests
+        run: uv run pytest -v

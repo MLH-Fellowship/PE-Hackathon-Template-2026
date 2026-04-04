@@ -1,0 +1,149 @@
+# ==============================================================================
+# Deployment Pipeline — Triggers when code is merged into staging or main
+# ==============================================================================
+# This workflow handles deployments after code passes CI and is merged.
+# - Merges to staging  → deploy to the staging environment
+# - Merges to main     → deploy to the production environment
+#
+# The deployment steps are currently placeholders. Replace them with your
+# actual deployment commands once you choose a hosting provider.
+# ==============================================================================
+
+name: Deploy
+
+# ------------------------------------------------------------------------------
+# Trigger: Run only on pushes (merges) to staging and main branches.
+# Pull requests do NOT trigger this workflow — that's handled by ci.yml.
+# ------------------------------------------------------------------------------
+on:
+  push:
+    branches: [main, staging]
+
+# ------------------------------------------------------------------------------
+# Only one deployment per branch at a time.
+# If a new merge happens while deploying, the old deploy is cancelled.
+# ------------------------------------------------------------------------------
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-staging:
+    # --------------------------------------------------------------------------
+    # Staging deployment: runs only when code is merged into the staging branch.
+    # This is your pre-production environment for testing before release.
+    # --------------------------------------------------------------------------
+    name: Deploy to Staging
+    if: github.ref_name == 'staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # --------------------------------------------------------------------------
+    # GitHub Environment: links this job to a "staging" environment in GitHub.
+    # You can add environment-specific secrets and protection rules in
+    # Settings → Environments. The URL is a placeholder — update it later.
+    # --------------------------------------------------------------------------
+    environment:
+      name: staging
+      url: https://staging.example.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync
+
+      # ========================================================================
+      # PLACEHOLDER: Replace the steps below with your actual deployment.
+      #
+      # Examples for common providers:
+      #
+      # --- Railway ---
+      # - name: Install Railway CLI
+      #   run: npm install -g @railway/cli
+      # - name: Deploy to Railway
+      #   run: railway up --service my-app
+      #   env:
+      #     RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      #
+      # --- Render ---
+      # - name: Trigger Render deploy
+      #   run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+      #
+      # --- Fly.io ---
+      # - name: Install flyctl
+      #   uses: superfly/flyctl-actions/setup-flyctl@master
+      # - name: Deploy to Fly.io
+      #   run: flyctl deploy --app my-app-staging
+      #   env:
+      #     FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      #
+      # --- Docker (generic) ---
+      # - name: Build Docker image
+      #   run: docker build -t my-app:staging .
+      # - name: Push to registry
+      #   run: docker push my-registry/my-app:staging
+      # ========================================================================
+      - name: Deploy to staging (placeholder)
+        run: |
+          echo "========================================="
+          echo "  STAGING DEPLOYMENT PLACEHOLDER"
+          echo "========================================="
+          echo "Replace this step with your actual deployment commands."
+          echo "See the comments above for examples."
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+
+  deploy-production:
+    # --------------------------------------------------------------------------
+    # Production deployment: runs only when code is merged into main.
+    # This is your live, user-facing environment.
+    # --------------------------------------------------------------------------
+    name: Deploy to Production
+    if: github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    environment:
+      name: production
+      url: https://example.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync
+
+      # ========================================================================
+      # PLACEHOLDER: Replace with your production deployment commands.
+      # See the staging job above for provider-specific examples.
+      # ========================================================================
+      - name: Deploy to production (placeholder)
+        run: |
+          echo "========================================="
+          echo "  PRODUCTION DEPLOYMENT PLACEHOLDER"
+          echo "========================================="
+          echo "Replace this step with your actual deployment commands."
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
