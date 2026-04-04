@@ -28,6 +28,7 @@ def format_url(url):
 def create_url():
     data = request.get_json(silent=True)
     if not data:
+        print("400: Invalid JSON")
         abort(400, description="Invalid JSON")
 
     user_id = data.get("user_id")
@@ -35,15 +36,19 @@ def create_url():
     title = data.get("title")
 
     if not user_id or not isinstance(user_id, int):
+        print("400: user_id must be an integer")
         abort(400, description="user_id must be an integer")
     if not original_url or not isinstance(original_url, str):
+        print("400: original_url must be a string")
         abort(400, description="original_url must be a string")
     if not title or not isinstance(title, str):
+        print("400: title must be a string")
         abort(400, description="title must be a string")
 
     try:
         User.get_by_id(user_id)
     except User.DoesNotExist:
+        print("400: User not found")
         abort(400, description="User not found")
 
     short_code = generate_short_code()
@@ -106,6 +111,7 @@ def update_url(url_id):
 
     data = request.get_json(silent=True)
     if not data:
+        print("400: Invalid JSON")
         abort(400, description="Invalid JSON")
 
     if "title" in data:

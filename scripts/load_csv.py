@@ -27,18 +27,24 @@ def main():
         db.create_tables([Event, Url, User])
 
         users = load_csv(os.path.join(RES_DIR, "users.csv"))
+        for u in users:
+            u.pop("id", None)
         with db.atomic():
             for batch in chunked(users, 100):
                 User.insert_many(batch).execute()
         print(f"  Loaded {len(users)} users")
 
         urls = load_csv(os.path.join(RES_DIR, "urls.csv"))
+        for u in urls:
+            u.pop("id", None)
         with db.atomic():
             for batch in chunked(urls, 100):
                 Url.insert_many(batch).execute()
         print(f"  Loaded {len(urls)} urls")
 
         events = load_csv(os.path.join(RES_DIR, "events.csv"))
+        for u in events:
+            u.pop("id", None)
         with db.atomic():
             for batch in chunked(events, 100):
                 Event.insert_many(batch).execute()
