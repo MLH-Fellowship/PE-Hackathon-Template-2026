@@ -1,5 +1,7 @@
 # MLH PE Hackathon — Flask + Peewee + PostgreSQL Template
 
+[Andy here: API.MD here](/docs/API.md)
+
 A minimal hackathon starter template. You get the scaffolding and database wiring — you build the models, routes, and CSV loading logic.
 
 **Stack:** Flask · Peewee ORM · PostgreSQL · uv

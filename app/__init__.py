@@ -20,4 +20,16 @@ def create_app():
     def health():
         return jsonify(status="ok")
 
+    @app.errorhandler(400)
+    def bad_request(error):
+        return jsonify({"error": str(error.description)}), 400
+
+    @app.errorhandler(404)
+    def not_found(error):
+        return jsonify({"error": "Not found"}), 404
+
+    @app.errorhandler(422)
+    def unprocessable_entity(error):
+        return jsonify({"error": "Unprocessable entity"}), 422
+
     return app
