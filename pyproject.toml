@@ -7,5 +7,9 @@ dependencies = [
     "flask>=3.1",
     "peewee>=3.17",
     "psycopg2-binary>=2.9",
+    "pytest>=9.0.2",
     "python-dotenv>=1.0",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
