@@ -20,6 +20,8 @@ jobs:
           script: |
             set -euo pipefail
 
-            cd "${APP_DIR}"˜
+            APP_DIR="${{ vars.VM_APP_DIR }}"
+
+            cd "${APP_DIR}"
             chmod +x scripts/deploy-vm.sh
             ./scripts/deploy-vm.sh
