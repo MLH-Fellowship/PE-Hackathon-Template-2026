@@ -1,4 +1,4 @@
-from peewee import IntegerField, CharField, DateTimeField, TextField, ForeignKeyField
+from peewee import AutoField, CharField, DateTimeField, TextField, ForeignKeyField
 
 from app.database import BaseModel
 from app.models.user import User
@@ -6,7 +6,7 @@ from app.models.url import Url
 
 
 class Event(BaseModel):
-    id = IntegerField(primary_key=True)
+    id = AutoField()
     url_id = ForeignKeyField(Url, backref="events", column_name="url_id")
     user_id = ForeignKeyField(User, backref="events", column_name="user_id")
     event_type = CharField()
