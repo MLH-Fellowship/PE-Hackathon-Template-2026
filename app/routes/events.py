@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 from datetime import datetime
 from flask import Blueprint, jsonify, request
 from playhouse.shortcuts import model_to_dict
@@ -9,18 +10,27 @@ from app.models import Event
 
 events_bp = Blueprint("events", __name__)
 
+def event_to_dict(e):
+    d = model_to_dict(e)
+    if d.get('details') and isinstance(d['details'], str):
+        try:
+            d['details'] = json.loads(d['details'])
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return d
+
 @events_bp.route("/events", methods=["GET"])
 def list_events():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
     events = Event.select().paginate(page, per_page)
-    return jsonify([model_to_dict(e) for e in events])
+    return jsonify([event_to_dict(e) for e in events])
 
 @events_bp.route("/events/<int:id>", methods=["GET"])
 def get_event(id):
     try:
         event = Event.get_by_id(id)
-        return jsonify(model_to_dict(event))
+        return jsonify(event_to_dict(event))
     except Event.DoesNotExist:
         return jsonify({"error": "Event not found"}), 404
 
@@ -34,9 +44,9 @@ def create_event():
         user_id=data.get('user_id'),
         event_type=data.get('event_type'),
         timestamp=datetime.now(),
-        details=data.get('details')
+        details=json.dumps(data.get('details')) if data.get('details') is not None else None
     )
-    return jsonify(model_to_dict(event)), 201
+    return jsonify(event_to_dict(event)), 201
 
 @events_bp.route("/events/bulk", methods=["POST"])
 def bulk_upload_events():
