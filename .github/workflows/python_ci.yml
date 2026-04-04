@@ -59,3 +59,21 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
+  push:
+    name: Build and push Docker images
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v7.0.0
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            nic5694/pe-engineering-hackathon:${{ github.sha }}
+            nic5694/pe-engineering-hackathon:latest
