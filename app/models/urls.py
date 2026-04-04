@@ -1,6 +1,9 @@
-from peewee import *
 from datetime import datetime
 from app.database import BaseModel
+from peewee import AutoField, BooleanField, CharField, DateTimeField, ForeignKeyField, TextField
+
+from app.database import BaseModel
+from app.models.users import User
 
 
 class Url(BaseModel):
