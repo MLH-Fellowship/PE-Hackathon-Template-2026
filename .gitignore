@@ -12,6 +12,7 @@ build/
 
 # Environment variables
 .env
+SECRETS.md
 
 # uv
 uv.lock
