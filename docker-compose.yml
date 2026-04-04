@@ -8,11 +8,13 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - /var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
 
   web:
     build: .
     command: uv run run.py
+    depends_on:
+      - db
     environment:
       FLASK_DEBUG: ${FLASK_DEBUG:-true}
       DATABASE_NAME: ${DATABASE_NAME:-hackathon_db}
@@ -25,4 +27,7 @@ services:
       - "5000:5000"
     volumes:
       - .:/app
+
+volumes:
+  pgdata:
 

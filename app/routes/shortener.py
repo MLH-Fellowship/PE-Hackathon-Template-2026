@@ -1,6 +1,7 @@
 import os
 import secrets
 import string
+from datetime import datetime
 from urllib.parse import urlparse
 
 from flask import Blueprint, jsonify, redirect, request
@@ -33,6 +34,7 @@ def _base_url() -> str:
 def shorten_url():
     payload = request.get_json(silent=True) or {}
     original_url = (payload.get("url") or payload.get("original_url") or "").strip()
+    title = (payload.get("title") or "").strip() or None
 
     if not original_url or not _is_valid_url(original_url):
         return jsonify(error="Please provide a valid http/https URL in 'url'"), 400
@@ -40,7 +42,12 @@ def shorten_url():
     for _ in range(10):
         code = _generate_code()
         try:
-            url = Url.create(original_url=original_url, short_code=code)
+            url = Url.create(
+                original_url=original_url,
+                short_code=code,
+                title=title,
+                updated_at=datetime.utcnow(),
+            )
             return (
                 jsonify(
                     original_url=url.original_url,
@@ -57,9 +64,8 @@ def shorten_url():
 
 @shortener_bp.get("/<short_code>")
 def resolve_short_url(short_code: str):
-    url = Url.get_or_none(Url.short_code == short_code)
+    url = Url.get_or_none((Url.short_code == short_code) & (Url.is_active == True))
     if url is None:
         return jsonify(error="Short URL not found"), 404
 
-    (Url.update(visits=Url.visits + 1).where(Url.short_code == short_code)).execute()
     return redirect(url.original_url, code=302)
