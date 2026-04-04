@@ -3,7 +3,7 @@ kind: PodDisruptionBudget
 metadata:
   name: api-disruption-budget
 spec:
-  minAvailable: 1
+  minAvailable: 3
   selector:
     matchLabels:
       app: deployment
