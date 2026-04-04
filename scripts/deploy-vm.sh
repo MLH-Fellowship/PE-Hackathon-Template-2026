@@ -15,7 +15,7 @@ docker compose build --pull
 docker compose up -d db redis
 docker compose --profile setup run --rm migrate
 
-docker compose up -d --remove-orphans web1 web2 web3 nginx
+docker compose up -d --remove-orphans web1 web2 nginx
 
 docker image prune -f || true
 
