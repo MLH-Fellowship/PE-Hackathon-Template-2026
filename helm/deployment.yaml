@@ -19,6 +19,17 @@ spec:
       - image: nic5694/pe-engineering-hackathon:latest
         imagePullPolicy: Always
         name: api
+        env:
+        - name: DATABASE_NAME
+          value: hackathon_db
+        - name: DATABASE_HOST
+          value: postgres
+        - name: DATABASE_PORT
+          value: "5432"
+        - name: DATABASE_USER
+          value: postgres
+        - name: DATABASE_PASSWORD
+          value: postgres
         ports:
         - containerPort: 5000
           protocol: TCP
