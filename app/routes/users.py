@@ -14,10 +14,12 @@ users_bp = Blueprint("users", __name__)
 @users_bp.route("/users/bulk", methods=["POST"])
 def bulk_import_users():
     if "file" not in request.files:
+        print("400: Missing 'file' field")
         abort(400, description="Missing 'file' field")
 
     file = request.files["file"]
     if not file.filename or not file.filename.endswith(".csv"):
+        print("400: Invalid file type")
         abort(400, description="Invalid file type")
 
     content = file.read().decode("utf-8")
@@ -37,15 +39,34 @@ def list_users():
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
 
-    total = User.count()
+    total = User.select().count()
     offset = (page - 1) * per_page
     users = User.select().limit(per_page).offset(offset)
 
     return jsonify([model_to_dict(u) for u in users])
-    except Exception as e:
-        abort(400, description=str(e))
 
-    return jsonify(model_to_dict(user)), 201
+
+@users_bp.route("/users/<int:user_id>", methods=["GET"])
+def get_user(user_id):
+    try:
+        user = User.get_by_id(user_id)
+    except User.DoesNotExist:
+        abort(404)
+    return jsonify(model_to_dict(user))
+
+
+@users_bp.route("/users", methods=["POST"])
+def create_user():
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            print("400: Invalid JSON")
+            abort(400, description="Invalid JSON")
+        user = User.create(**data)
+        return jsonify(model_to_dict(user)), 201
+    except Exception as e:
+        print(f"400: {e}")
+        abort(400, description=str(e))
 
 
 @users_bp.route("/users/<int:user_id>", methods=["PUT"])
@@ -57,6 +78,7 @@ def update_user(user_id):
 
     data = request.get_json(silent=True)
     if not data:
+        print("400: Invalid JSON")
         abort(400, description="Invalid JSON")
 
     if "username" in data:
