@@ -20,11 +20,12 @@ jobs:
           script: |
             set -euo pipefail
 
-            ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} bash -s -- "${VM_APP_DIR}" << 'EOF'
-              set -euo pipefail
-              APP_DIR="$1"
+            APP_DIR="${{ vars.VM_APP_DIR }}"
+            if [[ -z "${APP_DIR}" ]]; then
+              echo "VM_APP_DIR is empty. Set repository variable VM_APP_DIR before deploying."
+              exit 1
+            fi
 
-              cd "${APP_DIR}"
-              chmod +x scripts/deploy-vm.sh
-              ./scripts/deploy-vm.sh
-            EOF
+            cd "${APP_DIR}"
+            chmod +x scripts/deploy-vm.sh
+            ./scripts/deploy-vm.sh
